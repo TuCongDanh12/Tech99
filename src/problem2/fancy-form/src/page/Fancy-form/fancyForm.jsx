@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { Form, Select, Input, Button, Alert, Flex } from "antd";
+import { Form, Select, Input, Button, Alert, Flex, Divider } from "antd";
 
 const { Option } = Select;
 
@@ -9,7 +9,9 @@ const FancyForm = () => {
   const [exchangeRate, setExchangeRate] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [fromToken, setFromToken] = useState(null); // State lưu token 'from'
 
+  // Fetch token data từ API
   useEffect(() => {
     axios
       .get("https://interview.switcheo.com/prices.json")
@@ -24,22 +26,26 @@ const FancyForm = () => {
           }
           return uniqueTokens;
         }, []);
-        
-
         setTokens(tokenData);
       })
       .catch(() => setError("Failed to fetch token data."));
   }, []);
 
+  // Xử lý sự kiện khi nhấn nút Swap
   const handleSwap = (values) => {
-    const { from, to, amount } = values;
+    const { to, amount } = values;
 
-    if (from === to) {
+    if (!fromToken || !to || !amount) {
+      setError("Please fill in all fields.");
+      return;
+    }
+
+    if (fromToken === to) {
       setError("Cannot swap the same token.");
       return;
     }
 
-    const fromTokenData = tokens.find((token) => token.symbol === from);
+    const fromTokenData = tokens.find((token) => token.symbol === fromToken);
     const toTokenData = tokens.find((token) => token.symbol === to);
 
     if (!fromTokenData || !toTokenData) {
@@ -47,95 +53,93 @@ const FancyForm = () => {
       return;
     }
 
-    setError("");
-    setLoading(true);
+    setError(""); // Reset lỗi
+    setLoading(true); // Bắt đầu loading
 
     setTimeout(() => {
+      // Tính toán tỷ giá
       const rate = fromTokenData.price / toTokenData.price;
-      setExchangeRate(rate * parseFloat(amount));
-      setLoading(false);
-    }, 1000); // Simulate loading delay
+      setExchangeRate(rate * parseFloat(amount)); // Tính ra số lượng cần nhận
+      setLoading(false); // Dừng loading
+    }, 1000); // Giả lập thời gian xử lý
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-4">
-      <div className="bg-white p-6 rounded shadow-lg w-full max-w-md">
-        <h1 className="text-2xl font-bold mb-4 text-center">Currency Swap</h1>
-        {error && (
-          <Alert message={error} type="error" className="mb-4" showIcon />
-        )}
+    <div className="min-h-screen flex flex-col items-center justify-center !bg-gradient-to-r">
+      <div className="bg-[#1e1e1e] p-6 rounded-lg shadow-xl w-full max-w-lg">
+        <h1 className="text-3xl font-bold mb-6 text-white text-center">Currency Swap</h1>
+        {error && <Alert message={error} type="error" className="mb-4" showIcon />}
+
         <Form
           layout="vertical"
           onFinish={handleSwap}
           initialValues={{ amount: "", from: null, to: null }}
         >
-          {/* From Token */}
-          <Form.Item
-            name="from"
-            label={<span style={{ color: "white" }}>From</span>}
-            rules={[{ required: true, message: "Please select a token" }]}
-          >
-            <Select placeholder="Select a token">
-              {tokens.map((token) => (
-                <Option key={token.symbol} value={token.symbol}>
-                  <Flex align="center" justify="start" gap={5}>
-                    <img
-                      src={token.imageUrl}
-                      alt={token.symbol}
-                      className="w-6 h-6 object-contain"
-                    />
-                    <span className="text-base font-medium">
-                      {token.symbol}
-                    </span>
-                  </Flex>
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-
-          {/* To Token */}
-          <Form.Item
-            name="to"
-            label={<span style={{ color: "white" }}>To</span>}
-            rules={[{ required: true, message: "Please select a token" }]}
-          >
-            <Select placeholder="Select a token">
-              {tokens.map((token) => (
-                <Option key={token.symbol} value={token.symbol}>
-                  <Flex align="center" justify="start" gap={5}>
-                    <img
-                      src={token.imageUrl}
-                      alt={token.symbol}
-                      className="w-6 h-6 object-contain"
-                    />
-                    <span className="text-base font-medium">
-                      {token.symbol}
-                    </span>
-                  </Flex>
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-
-          {/* Amount */}
+          {/* Amount: Số lượng bạn muốn chuyển với addonAfter là từ */}
           <Form.Item
             name="amount"
-            label={<span style={{ color: "white" }}>Amount</span>}
-            rules={[
-              { required: true, message: "Please enter an amount" },
-              { pattern: /^[0-9]*\.?[0-9]+$/, message: "Enter a valid number" },
-            ]}
+            label={<span className="text-white">Amount</span>}
+            rules={[{ required: true, message: "Please enter an amount" }]}
           >
-            <Input placeholder="Enter amount" type="number" />
+            <Input
+              placeholder="Enter amount"
+              type="number"
+              className="bg-[#2c2c2c] text-white border border-gray-600 rounded"
+              addonAfter={
+                <Select
+                  value={fromToken} // Giữ token đã chọn
+                  onChange={setFromToken} // Cập nhật state khi chọn token
+                  style={{ width: 100 }}
+                >
+                  {tokens.map((token) => (
+                    <Option key={token.symbol} value={token.symbol}>
+                      <Flex align="center" gap={5}>
+                        <img
+                          src={token.imageUrl}
+                          alt={token.symbol}
+                          className="w-6 h-6 object-contain"
+                        />
+                        <span className="text-white font-medium">{token.symbol}</span>
+                      </Flex>
+                    </Option>
+                  ))}
+                </Select>
+              }
+            />
+          </Form.Item>
+
+          {/* To Token (Token bạn muốn nhận) */}
+          <Form.Item
+            name="to"
+            label={<span className="text-white">To</span>}
+            rules={[{ required: true, message: "Please select a token" }]}
+          >
+            <Select placeholder="Select a token" className="bg-[#2c2c2c] text-white border border-gray-600 rounded">
+              {tokens.map((token) => (
+                <Option key={token.symbol} value={token.symbol}>
+                  <Flex align="center" gap={5}>
+                    <img
+                      src={token.imageUrl}
+                      alt={token.symbol}
+                      className="w-8 h-8 object-contain"
+                    />
+                    <span className="text-white font-medium">{token.symbol}</span>
+                  </Flex>
+                </Option>
+              ))}
+            </Select>
           </Form.Item>
 
           {/* Submit Button */}
           <Form.Item>
-            <Button type="primary" htmlType="submit" block loading={loading}>
+            <Button type="primary" htmlType="submit" block loading={loading} className="bg-yellow-500 text-black rounded">
               Swap
             </Button>
           </Form.Item>
         </Form>
+
+        {/* Divider */}
+        <Divider className="text-white">Preview Exchange Rate</Divider>
 
         {/* Exchange Rate Result */}
         {exchangeRate && (
