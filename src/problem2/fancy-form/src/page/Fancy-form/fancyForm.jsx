@@ -110,7 +110,7 @@ const FancyForm = () => {
               className="bg-[#2c2c2c] text-white border border-gray-600 rounded"
               addonAfter={
                 <Form.Item name="from" noStyle>
-                  <Select style={{ width: 100 }}>
+                  <Select  showSearch style={{ width: 100 }}>
                     {tokens.map((token) => (
                       <Option key={token.symbol} value={token.symbol}>
                         <Flex align="center" gap={5}>
@@ -149,6 +149,7 @@ const FancyForm = () => {
             rules={[{ required: true, message: "Please select a token" }]}
           >
             <Select
+              showSearch
               placeholder="Select a token"
               className="bg-[#2c2c2c] text-white border border-gray-600 rounded"
               name="to"
