@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { Form, Select, Input, Button, Alert, Divider, Flex } from "antd";
+import { Form, Select, InputNumber, Button, Alert, Flex } from "antd";
 import { SwapOutlined } from "@ant-design/icons";
 
 const { Option } = Select;
@@ -9,10 +9,9 @@ const FancyForm = () => {
   const [tokens, setTokens] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [conversionResult, setConversionResult] = useState(); // State for conversion result
+  const [conversionResult, setConversionResult] = useState();
   const [form] = Form.useForm();
 
-  // Fetch token data on component mount
   useEffect(() => {
     axios
       .get("https://interview.switcheo.com/prices.json")
@@ -59,8 +58,6 @@ const FancyForm = () => {
       // Set immediate result to be shown
       setConversionResult(newResult);
       console.log(conversionResult);
-    } else {
-      setError("Invalid token data.");
     }
     setLoading(false);
   };
@@ -76,155 +73,146 @@ const FancyForm = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-r from-gray-800 via-gray-900 to-black">
-      <div className="bg-[#1e1e1e] p-6 rounded-lg shadow-xl w-full max-w-lg">
-        <h1 className="text-3xl font-bold mb-6 text-white text-center">
-          Currency Swap
-        </h1>
+    <div className=" p-6 rounded-lg shadow-xl w-full max-w-lg">
+      <h1 className="text-3xl font-bold mb-6  text-center">Currency Swap</h1>
 
-        {/* Error message */}
-        {error && (
-          <Alert message={error} type="error" className="mb-4" showIcon />
-        )}
+      {error && (
+        <Alert message={error} type="error" className="mb-4" showIcon />
+      )}
 
-        {/* Form for swap */}
-        <Form
-          layout="vertical"
-          onFinish={handleSwap}
-          initialValues={{
-            amount: "",
-            from: tokens[0]?.symbol,
-            to: tokens[1]?.symbol,
-          }}
-          form={form}
+      <Form
+        layout="vertical"
+        onFinish={handleSwap}
+        initialValues={{
+          amount: "",
+          from: tokens[0]?.symbol,
+          to: tokens[1]?.symbol,
+        }}
+        form={form}
+      >
+        <Form.Item
+          name="amount"
+          label="Amount"
+          rules={[
+            { required: true, message: "Please enter an positive amount" },
+            {
+              type: "number",
+              min: 1,
+              message: "Amount must be greater than 0",
+            },
+          ]}
         >
-          {/* Amount input */}
-          <Form.Item
-            name="amount"
-            label={<span className="!text-white">Amount</span>}
-            rules={[{ required: true, message: "Please enter an amount" }]}
-          >
-            <Input
-              placeholder="Enter amount"
-              type="number"
-              className="bg-[#2c2c2c] text-white border border-gray-600 rounded"
-              addonAfter={
-                <Form.Item name="from" noStyle>
-                  <Select  showSearch style={{ width: 100 }}>
-                    {tokens.map((token) => (
-                      <Option key={token.symbol} value={token.symbol}>
-                        <Flex align="center" gap={5}>
-                          <img
-                            src={token.imageUrl}
-                            alt={token.symbol}
-                            className="w-6 h-6 object-contain"
-                          />
-                          <span className="text-white font-medium">
-                            {token.symbol}
-                          </span>
-                        </Flex>
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-              }
-            />
-          </Form.Item>
+          <InputNumber
+            placeholder="Enter amount"
+            min={1}
+            step={1}
+            className="border border-gray-600 rounded w-full"
+            addonAfter={
+              <Form.Item
+                name="from"
+                rules={[{ required: true, message: "Please select a token" }]}
+                noStyle
+              >
+                <Select showSearch style={{ width: 100 }}>
+                  {tokens.map((token) => (
+                    <Option key={token.symbol} value={token.symbol}>
+                      <Flex align="center" gap={5}>
+                        <img
+                          src={token.imageUrl}
+                          alt={token.symbol}
+                          className="w-6 h-6 object-contain"
+                        />
+                        <span className="font-medium">{token.symbol}</span>
+                      </Flex>
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            }
+          />
+        </Form.Item>
 
-          {/* Swap button */}
-          <div className="flex justify-center mb-4">
-            <Button
-              type="text"
-              icon={<SwapOutlined />}
-              size="large"
-              className="!text-white"
-              onClick={handleSwitchTokens}
-            />
-          </div>
+        {/* Swap button */}
+        <div className="flex justify-center mb-4">
+          <Button
+            type="text"
+            icon={<SwapOutlined style={{ fontSize: "32px" }} />} 
+            size="large"
+            onClick={handleSwitchTokens}
+          />
+        </div>
 
-          {/* To token selection */}
-          <Form.Item
+        {/* To token selection */}
+        <Form.Item
+          name="to"
+          label="To"
+          rules={[{ required: true, message: "Please select a token" }]}
+        >
+          <Select
+            showSearch
+            placeholder="Select a token"
+            className="bg-[#2c2c2c] text-white border border-gray-600 rounded"
             name="to"
-            label={<span className="!text-white">To</span>}
-            rules={[{ required: true, message: "Please select a token" }]}
           >
-            <Select
-              showSearch
-              placeholder="Select a token"
-              className="bg-[#2c2c2c] text-white border border-gray-600 rounded"
-              name="to"
-            >
-              {tokens.map((token) => (
-                <Option key={token.symbol} value={token.symbol}>
-                  <Flex align="center" gap={5}>
-                    <img
-                      src={token.imageUrl}
-                      alt={token.symbol}
-                      className="w-8 h-8 object-contain"
-                    />
-                    <span className="text-white font-medium">
-                      {token.symbol}
-                    </span>
-                  </Flex>
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
+            {tokens.map((token) => (
+              <Option key={token.symbol} value={token.symbol}>
+                <Flex align="center" gap={5}>
+                  <img src={token.imageUrl} alt={token.symbol} />
+                  <span className="font-medium">{token.symbol}</span>
+                </Flex>
+              </Option>
+            ))}
+          </Select>
+        </Form.Item>
 
-          {/* Submit button */}
-          <Form.Item>
-            <Button
-              type="primary"
-              htmlType="submit"
-              block
-              loading={loading}
-              className="!bg-[#f5dd42] text-black rounded"
-            >
-              Convert
-            </Button>
-          </Form.Item>
-        </Form>
+        {/* Submit button */}
+        <Form.Item>
+          <Button
+            type="primary"
+            htmlType="submit"
+            block
+            loading={loading}
+            className="!bg-[#f5dd42] font-bold text-black rounded"
+          >
+            Convert
+          </Button>
+        </Form.Item>
+      </Form>
 
-        {/* Conversion result display */}
-        {conversionResult && conversionResult.fromAmount && (
-          <div className="mt-6 text-white text-center">
-            <h2 className="text-xl font-semibold">Conversion Result</h2>
-            <div>
-              <Flex  align="center">
-                
-                <span className="font-medium ">
-                  {conversionResult.fromAmount} {conversionResult.fromSymbol}
-                </span>
-                <img
-                  src={
-                    tokens.find(
-                      (token) => token.symbol === conversionResult.fromSymbol
-                    )?.imageUrl
-                  }
-                  alt={conversionResult.fromSymbol}
-                  className="w-6 h-6 object-contain !mr-2"
-                />
-                <span className="mx-2">=</span>
-                
-                <span className="font-medium">
-                  {conversionResult.toAmount} {conversionResult.toSymbol}
-                </span>
-                <img
-                  src={
-                    tokens.find(
-                      (token) => token.symbol === conversionResult.toSymbol
-                    )?.imageUrl
-                  }
-                  alt={conversionResult.toSymbol}
-                  className="w-6 h-6 object-contain mr-2"
-                />
-              </Flex>
-            </div>
-          </div>
-        )}
+      {/* Conversion result display */}
+      {conversionResult && conversionResult.fromAmount && (
+        <div className="mt-6">
+          <h2 className="text-xl font-semibold">Conversion Result</h2>
 
-        <Divider className="border-t border-white" />
-      </div>
+          <Flex>
+            <span className="font-medium mr-2 ">
+              {conversionResult.fromAmount} {conversionResult.fromSymbol}
+            </span>
+            <img
+              src={
+                tokens.find(
+                  (token) => token.symbol === conversionResult.fromSymbol
+                )?.imageUrl
+              }
+              alt={conversionResult.fromSymbol}
+            />
+            <span className="mx-2">=</span>
+
+            <span className="font-medium mr-2">
+              {conversionResult.toAmount} {conversionResult.toSymbol}
+            </span>
+            <img
+              src={
+                tokens.find(
+                  (token) => token.symbol === conversionResult.toSymbol
+                )?.imageUrl
+              }
+              alt={conversionResult.toSymbol}
+              className="w-6 h-6 object-contain mr-2"
+            />
+          </Flex>
+        </div>
+      )}
     </div>
   );
 };

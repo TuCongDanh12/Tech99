@@ -7,9 +7,11 @@ function App() {
   
 
   return (
-    <Flex vertical align='center' className='!w-3/5'>
-      <FancyForm/>
-    </Flex>
+    <div className="background-container h-screen">
+      <Flex vertical align="center" justify="center" className="h-full">
+        <FancyForm />
+      </Flex>
+    </div>
   )
 }
 
