@@ -1,84 +1,107 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { Form, Select, Input, Button, Alert, Flex, Divider } from "antd";
+import { Form, Select, Input, Button, Alert, Divider, Flex } from "antd";
+import { SwapOutlined } from "@ant-design/icons";
 
 const { Option } = Select;
 
 const FancyForm = () => {
   const [tokens, setTokens] = useState([]);
-  const [exchangeRate, setExchangeRate] = useState(null);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [fromToken, setFromToken] = useState(null); // State lưu token 'from'
+  const [loading, setLoading] = useState(false);
+  const [conversionResult, setConversionResult] = useState(); // State for conversion result
+  const [form] = Form.useForm();
 
-  // Fetch token data từ API
+  // Fetch token data on component mount
   useEffect(() => {
     axios
       .get("https://interview.switcheo.com/prices.json")
       .then((response) => {
-        const tokenData = response.data.reduce((uniqueTokens, { currency, price }) => {
-          if (!uniqueTokens.find((token) => token.symbol === currency)) {
-            uniqueTokens.push({
-              symbol: currency,
-              price,
-              imageUrl: `https://raw.githubusercontent.com/Switcheo/token-icons/main/tokens/${currency}.svg`,
-            });
-          }
-          return uniqueTokens;
-        }, []);
+        const tokenData = response.data.reduce(
+          (uniqueTokens, { currency, price }) => {
+            if (!uniqueTokens.find((token) => token.symbol === currency)) {
+              uniqueTokens.push({
+                symbol: currency,
+                price,
+                imageUrl: `https://raw.githubusercontent.com/Switcheo/token-icons/main/tokens/${currency}.svg`,
+              });
+            }
+            return uniqueTokens;
+          },
+          []
+        );
         setTokens(tokenData);
       })
-      .catch(() => setError("Failed to fetch token data."));
+      .catch(() => {
+        setError("Failed to load tokens.");
+      });
   }, []);
 
-  // Xử lý sự kiện khi nhấn nút Swap
+  // Handle token swap logic
   const handleSwap = (values) => {
-    const { to, amount } = values;
+    setLoading(true);
+    const { amount, from, to } = values;
 
-    if (!fromToken || !to || !amount) {
-      setError("Please fill in all fields.");
-      return;
+    // Check if tokens are selected
+    const fromToken = tokens.find((token) => token.symbol === from);
+    const toToken = tokens.find((token) => token.symbol === to);
+
+    if (fromToken && toToken) {
+      // Perform conversion logic
+      const toAmount = (amount * fromToken.price) / toToken.price;
+      const newResult = {
+        fromAmount: amount,
+        fromSymbol: from,
+        toAmount: toAmount.toFixed(4), // Limit decimal points to 2
+        toSymbol: to,
+      };
+
+      // Set immediate result to be shown
+      setConversionResult(newResult);
+      console.log(conversionResult);
+    } else {
+      setError("Invalid token data.");
     }
+    setLoading(false);
+  };
 
-    if (fromToken === to) {
-      setError("Cannot swap the same token.");
-      return;
-    }
-
-    const fromTokenData = tokens.find((token) => token.symbol === fromToken);
-    const toTokenData = tokens.find((token) => token.symbol === to);
-
-    if (!fromTokenData || !toTokenData) {
-      setError("Invalid token selection.");
-      return;
-    }
-
-    setError(""); // Reset lỗi
-    setLoading(true); // Bắt đầu loading
-
-    setTimeout(() => {
-      // Tính toán tỷ giá
-      const rate = fromTokenData.price / toTokenData.price;
-      setExchangeRate(rate * parseFloat(amount)); // Tính ra số lượng cần nhận
-      setLoading(false); // Dừng loading
-    }, 1000); // Giả lập thời gian xử lý
+  // Handle token switch
+  const handleSwitchTokens = () => {
+    form.validateFields().then((values) => {
+      form.setFieldsValue({
+        from: values.to,
+        to: values.from,
+      });
+    });
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center !bg-gradient-to-r">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-r from-gray-800 via-gray-900 to-black">
       <div className="bg-[#1e1e1e] p-6 rounded-lg shadow-xl w-full max-w-lg">
-        <h1 className="text-3xl font-bold mb-6 text-white text-center">Currency Swap</h1>
-        {error && <Alert message={error} type="error" className="mb-4" showIcon />}
+        <h1 className="text-3xl font-bold mb-6 text-white text-center">
+          Currency Swap
+        </h1>
 
+        {/* Error message */}
+        {error && (
+          <Alert message={error} type="error" className="mb-4" showIcon />
+        )}
+
+        {/* Form for swap */}
         <Form
           layout="vertical"
           onFinish={handleSwap}
-          initialValues={{ amount: "", from: null, to: null }}
+          initialValues={{
+            amount: "",
+            from: tokens[0]?.symbol,
+            to: tokens[1]?.symbol,
+          }}
+          form={form}
         >
-          {/* Amount: Số lượng bạn muốn chuyển với addonAfter là từ */}
+          {/* Amount input */}
           <Form.Item
             name="amount"
-            label={<span className="text-white">Amount</span>}
+            label={<span className="!text-white">Amount</span>}
             rules={[{ required: true, message: "Please enter an amount" }]}
           >
             <Input
@@ -86,35 +109,50 @@ const FancyForm = () => {
               type="number"
               className="bg-[#2c2c2c] text-white border border-gray-600 rounded"
               addonAfter={
-                <Select
-                  value={fromToken} // Giữ token đã chọn
-                  onChange={setFromToken} // Cập nhật state khi chọn token
-                  style={{ width: 100 }}
-                >
-                  {tokens.map((token) => (
-                    <Option key={token.symbol} value={token.symbol}>
-                      <Flex align="center" gap={5}>
-                        <img
-                          src={token.imageUrl}
-                          alt={token.symbol}
-                          className="w-6 h-6 object-contain"
-                        />
-                        <span className="text-white font-medium">{token.symbol}</span>
-                      </Flex>
-                    </Option>
-                  ))}
-                </Select>
+                <Form.Item name="from" noStyle>
+                  <Select style={{ width: 100 }}>
+                    {tokens.map((token) => (
+                      <Option key={token.symbol} value={token.symbol}>
+                        <Flex align="center" gap={5}>
+                          <img
+                            src={token.imageUrl}
+                            alt={token.symbol}
+                            className="w-6 h-6 object-contain"
+                          />
+                          <span className="text-white font-medium">
+                            {token.symbol}
+                          </span>
+                        </Flex>
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
               }
             />
           </Form.Item>
 
-          {/* To Token (Token bạn muốn nhận) */}
+          {/* Swap button */}
+          <div className="flex justify-center mb-4">
+            <Button
+              type="text"
+              icon={<SwapOutlined />}
+              size="large"
+              className="!text-white"
+              onClick={handleSwitchTokens}
+            />
+          </div>
+
+          {/* To token selection */}
           <Form.Item
             name="to"
-            label={<span className="text-white">To</span>}
+            label={<span className="!text-white">To</span>}
             rules={[{ required: true, message: "Please select a token" }]}
           >
-            <Select placeholder="Select a token" className="bg-[#2c2c2c] text-white border border-gray-600 rounded">
+            <Select
+              placeholder="Select a token"
+              className="bg-[#2c2c2c] text-white border border-gray-600 rounded"
+              name="to"
+            >
               {tokens.map((token) => (
                 <Option key={token.symbol} value={token.symbol}>
                   <Flex align="center" gap={5}>
@@ -123,30 +161,68 @@ const FancyForm = () => {
                       alt={token.symbol}
                       className="w-8 h-8 object-contain"
                     />
-                    <span className="text-white font-medium">{token.symbol}</span>
+                    <span className="text-white font-medium">
+                      {token.symbol}
+                    </span>
                   </Flex>
                 </Option>
               ))}
             </Select>
           </Form.Item>
 
-          {/* Submit Button */}
+          {/* Submit button */}
           <Form.Item>
-            <Button type="primary" htmlType="submit" block loading={loading} className="bg-yellow-500 text-black rounded">
-              Swap
+            <Button
+              type="primary"
+              htmlType="submit"
+              block
+              loading={loading}
+              className="!bg-[#f5dd42] text-black rounded"
+            >
+              Convert
             </Button>
           </Form.Item>
         </Form>
 
-        {/* Divider */}
-        <Divider className="text-white">Preview Exchange Rate</Divider>
-
-        {/* Exchange Rate Result */}
-        {exchangeRate && (
-          <div className="mt-4 p-4 bg-green-100 rounded text-green-800">
-            <p>{exchangeRate.toFixed(4)} for the entered amount.</p>
+        {/* Conversion result display */}
+        {conversionResult && conversionResult.fromAmount && (
+          <div className="mt-6 text-white text-center">
+            <h2 className="text-xl font-semibold">Conversion Result</h2>
+            <div>
+              <Flex  align="center">
+                
+                <span className="font-medium ">
+                  {conversionResult.fromAmount} {conversionResult.fromSymbol}
+                </span>
+                <img
+                  src={
+                    tokens.find(
+                      (token) => token.symbol === conversionResult.fromSymbol
+                    )?.imageUrl
+                  }
+                  alt={conversionResult.fromSymbol}
+                  className="w-6 h-6 object-contain !mr-2"
+                />
+                <span className="mx-2">=</span>
+                
+                <span className="font-medium">
+                  {conversionResult.toAmount} {conversionResult.toSymbol}
+                </span>
+                <img
+                  src={
+                    tokens.find(
+                      (token) => token.symbol === conversionResult.toSymbol
+                    )?.imageUrl
+                  }
+                  alt={conversionResult.toSymbol}
+                  className="w-6 h-6 object-contain mr-2"
+                />
+              </Flex>
+            </div>
           </div>
         )}
+
+        <Divider className="border-t border-white" />
       </div>
     </div>
   );
